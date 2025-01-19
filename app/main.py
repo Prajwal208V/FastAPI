@@ -1,11 +1,24 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from fastapi import FastAPI, HTTPException, Response, status
+from fastapi import FastAPI, HTTPException, Response, status, Depends
 from pydantic import BaseModel
 import time
 
+from . import models #SQLALCHEMY
+from sqlalchemy.orm import Session
+from .database import engine, get_db
+
+models.Base.metadata.create_all(bind=engine)#SQLALCHEMY, it will create table within postgres
+
+
 # Initialize the FastAPI application
 app = FastAPI() 
+
+@app.get('/sqlalchemy')
+def test_posts(db: Session = Depends(get_db)):
+    print(db)
+    return {"status": "success"}
+
 
 # Attempt to connect to the PostgreSQL database with retries
 while True:
