@@ -1,8 +1,9 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from fastapi import FastAPI, HTTPException, Response, status, Depends
-from pydantic import BaseModel
 import time
+from .pydantic import PostCreate, Post, UserCreate, userOut
+from typing import Optional, List
 
 from . import models #SQLALCHEMY
 from sqlalchemy.orm import Session
@@ -13,21 +14,15 @@ models.Base.metadata.create_all(bind=engine)#SQLALCHEMY, it will create table wi
 
 # Initialize the FastAPI application
 app = FastAPI() 
-# Define a Pydantic model for input validation and data handling
-class Post(BaseModel):
-    title: str  # Title of the post (string)
-    content: str  # Content of the post (string)
-    published: bool = True  # Optional field with default value as True
 
 # sqlalchemy end points
-@app.get('/sqlalchemy/posts')
+@app.get('/sqlalchemy/posts',response_model=List[Post])
 def test_posts(db: Session = Depends(get_db)):
     posts = db.query(models.Post).all()
-    print(posts)
-    return {"data": posts}
+    return posts
 
-@app.post("/sqlalchemy/posts", status_code=status.HTTP_201_CREATED) 
-def create_posts(post:Post, db: Session = Depends(get_db)):
+@app.post("/sqlalchemy/posts", status_code=status.HTTP_201_CREATED,response_model=Post) 
+def create_posts(post:PostCreate, db: Session = Depends(get_db)):
     # new_post= models.Post(
     #     title=post.title,
     #     content=post.content,
@@ -39,9 +34,9 @@ def create_posts(post:Post, db: Session = Depends(get_db)):
     db.add(new_post)
     db.commit()
     db.refresh(new_post) # retrive that new post that we just created and store back into variable
-    return {"data":new_post}
+    return new_post
 
-@app.get("/sqlalchemy/posts/{id}")  # GET request to get a specific post by ID
+@app.get("/sqlalchemy/posts/{id}",response_model=Post)  # GET request to get a specific post by ID
 def get_post_by_id(id: int,db: Session = Depends(get_db)):
    post = db.query(models.Post).filter(models.Post.id == id).first() # filter works as WHERE in query
    if not post:  # Check if post doesn't exist
@@ -49,7 +44,7 @@ def get_post_by_id(id: int,db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND, 
             detail={"message": f"Post with id: {id} was not found"}
         ) 
-   return {"post_detail": post}
+   return post
 
 @app.delete("/sqlalchemy/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)  # DELETE request to remove a post
 def delete_post(id: int, db: Session = Depends(get_db)):
@@ -61,11 +56,11 @@ def delete_post(id: int, db: Session = Depends(get_db)):
         ) 
     post.delete(synchronize_session=False)
     db.commit()
-    return {"message": "Post has been removed"}
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@app.put("/sqlalchemy/posts/{id}")  # PUT request to update a post
-def update_post(id: int, uodated_post: Post, db: Session = Depends(get_db)):
+@app.put("/sqlalchemy/posts/{id}",response_model=Post)  # PUT request to update a post
+def update_post(id: int, uodated_post: PostCreate, db: Session = Depends(get_db)):
     post_query = db.query(models.Post).filter(models.Post.id == id)
     post = post_query.first()
     if post == None:  # Check if the post wasn't found
@@ -79,7 +74,7 @@ def update_post(id: int, uodated_post: Post, db: Session = Depends(get_db)):
     )
     db.commit()
     print(post_query.first())
-    return {"data": post_query.first()}
+    return post_query.first()
 
 
 # Attempt to connect to the PostgreSQL database with retries
@@ -117,11 +112,11 @@ def get_post():
             detail={"message": "No posts found"}
         ) 
     print(posts)  # Print posts for debugging
-    return {"posts": posts}
+    return posts
 
 # Endpoint to create a new post in the database
 @app.post("/posts", status_code=status.HTTP_201_CREATED)  # POST request to add a new post
-def create_posts(post: Post):
+def create_posts(post: PostCreate):
     cursor.execute(
         """INSERT INTO posts2 (title, content, published) VALUES (%s, %s, %s) RETURNING *""", 
         (post.title, post.content, post.published)
@@ -134,7 +129,7 @@ def create_posts(post: Post):
             detail={"message": "Data not added"}
         ) 
     print(new_post)  # Print new post for debugging
-    return {"new_post_detail": new_post}
+    return new_post
 
 # Endpoint to fetch the latest post based on the created_at timestamp
 @app.get("/posts/latest")  # GET request to get the latest post
@@ -156,7 +151,7 @@ def get_post_by_id(id: int, response: Response):
             status_code=status.HTTP_404_NOT_FOUND, 
             detail={"message": f"Post with id: {id} was not found"}
         ) 
-    return {"post_detail": post}
+    return post
 
 # Endpoint to delete a post by its ID
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)  # DELETE request to remove a post
@@ -169,11 +164,11 @@ def delete_post(id: int):
             status_code=status.HTTP_404_NOT_FOUND, 
             detail={"message": f"Post with id: {id} was not found"}
         ) 
-    return {"message": "Post has been removed"}
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 # Endpoint to update an existing post by its ID
 @app.put("/posts/{id}")  # PUT request to update a post
-def update_post(id: int, post: Post):
+def update_post(id: int, post: PostCreate):
     cursor.execute(
         """UPDATE posts2 SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""",
         (post.title, post.content, post.published, str(id))
@@ -185,4 +180,15 @@ def update_post(id: int, post: Post):
             status_code=status.HTTP_404_NOT_FOUND, 
             detail={"message": f"Post with id: {id} was not found"}
         ) 
-    return {"data": updated_post}
+    return updated_post
+
+
+@app.post("/users", status_code=status.HTTP_201_CREATED, response_model=userOut) 
+def create_user(user:UserCreate, db: Session = Depends(get_db)):
+    new_user = models.User(
+        **user.dict()
+        )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
