@@ -9,6 +9,10 @@ from . import models #SQLALCHEMY
 from sqlalchemy.orm import Session
 from .database import engine, get_db
 
+from .utils import hash
+
+
+
 models.Base.metadata.create_all(bind=engine)#SQLALCHEMY, it will create table within postgres
 
 
@@ -185,6 +189,8 @@ def update_post(id: int, post: PostCreate):
 
 @app.post("/users", status_code=status.HTTP_201_CREATED, response_model=userOut) 
 def create_user(user:UserCreate, db: Session = Depends(get_db)):
+    hasged_password = hash(user.password)
+    user.password = hasged_password
     new_user = models.User(
         **user.dict()
         )
@@ -192,3 +198,18 @@ def create_user(user:UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
     return new_user
+
+
+
+@app.get("/users/{id}", status_code=status.HTTP_201_CREATED,response_model=userOut)
+def get_user(id:int,db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail={ f"User with id: {id} dose not exist"}
+        ) 
+    return user
+    
+
+
