@@ -4,7 +4,10 @@ from psycopg2.extras import RealDictCursor
 import time
 from fastapi import HTTPException, status, Response, APIRouter
 
-router = APIRouter()
+router = APIRouter(
+    prefix = '/posts',
+    tags=['Posts']
+)
 
 # Attempt to connect to the PostgreSQL database with retries
 while True:
@@ -25,15 +28,8 @@ while True:
         print("Error:", error)
         time.sleep(2)  # Retry after 2 seconds if connection fails
 
-
-
-# Root endpoint to test API status
-@router.get("/")  # Path operation decorator for root URL
-def root():
-    return {"message": "Hello API!!!!!!!!"}
-
 # Endpoint to retrieve all posts from the database
-@router.get("/posts")  # GET request to fetch all posts
+@router.get("/")  # GET request to fetch all posts
 def get_post():
     cursor.execute("""SELECT * FROM posts2""")  # Execute SQL query
     posts = cursor.fetchall()  # Fetch all results from query
@@ -46,7 +42,7 @@ def get_post():
     return posts
 
 # Endpoint to create a new post in the database
-@router.post("/posts", status_code=status.HTTP_201_CREATED)  # POST request to add a new post
+@router.post("/", status_code=status.HTTP_201_CREATED)  # POST request to add a new post
 def create_posts(post: PostCreate):
     cursor.execute(
         """INSERT INTO posts2 (title, content, published) VALUES (%s, %s, %s) RETURNING *""", 
@@ -63,7 +59,7 @@ def create_posts(post: PostCreate):
     return new_post
 
 # Endpoint to fetch the latest post based on the created_at timestamp
-@router.get("/posts/latest")  # GET request to get the latest post
+@router.get("/latest")  # GET request to get the latest post
 def get_lastest_post():
     cursor.execute("SELECT * FROM posts2 ORDER BY created_at DESC LIMIT 1")
     last_row = cursor.fetchone()  # Fetch the latest row
@@ -73,7 +69,7 @@ def get_lastest_post():
     return last_row
 
 # Endpoint to fetch a post by its ID
-@router.get("/posts/{id}")  # GET request to get a specific post by ID
+@router.get("/{id}")  # GET request to get a specific post by ID
 def get_post_by_id(id: int, response: Response):
     cursor.execute("""SELECT * FROM posts2 WHERE id = %s """, (str(id),))
     post = cursor.fetchone()  # Fetch the requested post
@@ -85,7 +81,7 @@ def get_post_by_id(id: int, response: Response):
     return post
 
 # Endpoint to delete a post by its ID
-@router.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)  # DELETE request to remove a post
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)  # DELETE request to remove a post
 def delete_post(id: int):
     cursor.execute("""DELETE FROM posts2 WHERE id = %s RETURNING *""", (str(id),))
     deleted_post = cursor.fetchone()  # Fetch the deleted post
@@ -98,7 +94,7 @@ def delete_post(id: int):
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 # Endpoint to update an existing post by its ID
-@router.put("/posts/{id}")  # PUT request to update a post
+@router.put("/{id}")  # PUT request to update a post
 def update_post(id: int, post: PostCreate):
     cursor.execute(
         """UPDATE posts2 SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""",

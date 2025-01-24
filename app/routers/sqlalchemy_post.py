@@ -6,15 +6,18 @@ from .. import models #SQLALCHEMY
 from ..pydantic import PostCreate, Post
 
 
-router = APIRouter()
+router = APIRouter(
+   prefix ='/sqlalchemy/posts',
+   tags=['Sqlalchemy Posts']
+)
 
 # sqlalchemy end points
-@router.get('/sqlalchemy/posts',response_model=List[Post])
+@router.get('/',response_model=List[Post])
 def test_posts(db: Session = Depends(get_db)):
     posts = db.query(models.Post).all()
     return posts
 
-@router.post("/sqlalchemy/posts", status_code=status.HTTP_201_CREATED,response_model=Post) 
+@router.post("/", status_code=status.HTTP_201_CREATED,response_model=Post) 
 def create_posts(post:PostCreate, db: Session = Depends(get_db)):
     # new_post= models.Post(
     #     title=post.title,
@@ -29,7 +32,7 @@ def create_posts(post:PostCreate, db: Session = Depends(get_db)):
     db.refresh(new_post) # retrive that new post that we just created and store back into variable
     return new_post
 
-@router.get("/sqlalchemy/posts/{id}",response_model=Post)  # GET request to get a specific post by ID
+@router.get("/{id}",response_model=Post)  # GET request to get a specific post by ID
 def get_post_by_id(id: int,db: Session = Depends(get_db)):
    post = db.query(models.Post).filter(models.Post.id == id).first() # filter works as WHERE in query
    if not post:  # Check if post doesn't exist
@@ -39,7 +42,7 @@ def get_post_by_id(id: int,db: Session = Depends(get_db)):
         ) 
    return post
 
-@router.delete("/sqlalchemy/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)  # DELETE request to remove a post
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)  # DELETE request to remove a post
 def delete_post(id: int, db: Session = Depends(get_db)):
     post = db.query(models.Post).filter(models.Post.id == id)
     if post.first() == None:  # Check if no post was deleted
@@ -52,7 +55,7 @@ def delete_post(id: int, db: Session = Depends(get_db)):
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.put("/sqlalchemy/posts/{id}",response_model=Post)  # PUT request to update a post
+@router.put("/{id}",response_model=Post)  # PUT request to update a post
 def update_post(id: int, uodated_post: PostCreate, db: Session = Depends(get_db)):
     post_query = db.query(models.Post).filter(models.Post.id == id)
     post = post_query.first()
