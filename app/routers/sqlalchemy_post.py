@@ -1,8 +1,10 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, Response, status, Depends,APIRouter
 from typing import List
+
+from app import oauth2
 from ..database import get_db
-from .. import models #SQLALCHEMY
+from .. import models, oauth2 #SQLALCHEMY
 from ..pydantic import PostCreate, Post
 
 
@@ -13,17 +15,22 @@ router = APIRouter(
 
 # sqlalchemy end points
 @router.get('/',response_model=List[Post])
-def test_posts(db: Session = Depends(get_db)):
+def gest_posts(db: Session = Depends(get_db)):
     posts = db.query(models.Post).all()
     return posts
 
 @router.post("/", status_code=status.HTTP_201_CREATED,response_model=Post) 
-def create_posts(post:PostCreate, db: Session = Depends(get_db)):
+def create_posts(
+    post:PostCreate,
+    db: Session = Depends(get_db), 
+    user_id: int = Depends(oauth2.get_current_user)
+  ):
     # new_post= models.Post(
     #     title=post.title,
     #     content=post.content,
     #     published=post.published
     #     )
+    print(user_id)
     new_post = models.Post(
         **post.dict() # ** for unpacking and it is replacing above commited code
     )
@@ -63,7 +70,7 @@ def update_post(id: int, uodated_post: PostCreate, db: Session = Depends(get_db)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail={"message": f"Post with id: {id} was not found"}
-        ) 
+        )
     post_query.update(
         uodated_post.dict(),
         synchronize_session=False

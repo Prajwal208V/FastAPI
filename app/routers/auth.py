@@ -12,12 +12,12 @@ def login(user_credentials: pydantic.UserLogin , db: Session = Depends(database.
     user = db.query(models.User).filter(models.User.email == user_credentials.email).first()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
+            status_code=status.HTTP_403_FORBIDDEN, 
             detail="Invalid Credentails"
         )
     if not utils.varify(user_credentials.password, user.password):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
+            status_code=status.HTTP_403_FORBIDDEN, 
             detail="Invalid Credentails"
         )
     access_token = oauth2.create_access_token(

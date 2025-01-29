@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
+from typing import Optional
 
 # Define a Pydantic model for input validation and data handling
 class PostBase(BaseModel):
@@ -32,6 +33,13 @@ class userOut(BaseModel):
 class UserLogin(BaseModel):
     email:EmailStr
     password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    id:Optional[str] = None
 
 
 
