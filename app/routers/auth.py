@@ -20,7 +20,7 @@ def login(user_credentials: pydantic.UserLogin , db: Session = Depends(database.
             status_code=status.HTTP_403_FORBIDDEN, 
             detail="Invalid Credentails"
         )
-    access_token = oauth2.create_access_token(
+    access_token = oauth2.get_current_user(
         data={
         "user_id": user.id
         }
